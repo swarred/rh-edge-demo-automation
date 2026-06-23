@@ -1,0 +1,32 @@
+#cloud-config
+
+# VM credentials
+ssh_pwauth: true
+chpasswd:
+  expire: false
+  users:
+    - name: demo
+      password: redhat
+      type: text
+
+write_files:
+  # Skupper AccessClaim — redeemed by skupper-init.service on first boot
+  - path: /etc/skupper/token.yaml
+    permissions: '0600'
+    content: |
+      apiVersion: skupper.io/v2alpha1
+      kind: AccessClaim
+      metadata:
+        name: edge-node-claim
+        namespace: jtac-ops
+      spec:
+        url: {{ skupper_token_url }}
+        code: {{ skupper_token_code }}
+        ca: {{ skupper_token_ca }}
+
+  - path: /var/lib/rh-edge-demo/.keep
+    content: ""
+
+runcmd:
+  - mkdir -p /var/lib/rh-edge-demo
+  - systemctl daemon-reload
