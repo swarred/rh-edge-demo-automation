@@ -19,15 +19,7 @@
   tasks:
     # ── OCP side ──────────────────────────────────────────────────
     - name: Create OCP namespace
-      command: >
-        oc apply -f - <<'EOF'
-        apiVersion: v1
-        kind: Namespace
-        metadata:
-          name: {{ ocp_namespace }}
-          labels:
-            app.kubernetes.io/part-of: rh-edge-demo
-        EOF
+      command: oc apply -f ../rh-edge-demo/ocp/namespace.yaml
 
     - name: Install Skupper operator (if not present)
       command: >
