@@ -56,10 +56,11 @@
     # ── Build bootc image ──────────────────────────────────────────
     - name: Build bootc edge node image
       command: >
-        sudo podman build
+        podman build
         --authfile {{ authfile }}
         -t localhost/{{ image_name }}:{{ image_tag }}
         ../rh-edge-demo
+      become: true
       register: build_out
 
     - name: Show build output
@@ -68,8 +69,9 @@
 
     # ── Convert to QCOW2 ──────────────────────────────────────────
     - name: Convert bootc image to QCOW2
+      become: true
       command: >
-        sudo podman run --rm --privileged
+        podman run --rm --privileged
         --authfile {{ authfile }}
         -v /var/lib/containers/storage:/var/lib/containers/storage
         -v {{ playbook_dir }}/output:/output
