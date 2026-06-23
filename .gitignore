@@ -1,0 +1,4 @@
+vars/vault.yml
+cloud-init/user-data-rendered
+output/
+*.retry

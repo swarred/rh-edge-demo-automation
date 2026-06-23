@@ -1,0 +1,173 @@
+---
+- name: Deploy RH Edge Demo — Scenario 1 (JTAC Identity Continuity)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/config.yml
+
+  pre_tasks:
+    - name: Verify OCP login
+      command: oc whoami
+      register: oc_user
+      changed_when: false
+
+    - name: Show cluster user
+      debug:
+        msg: "Deploying as {{ oc_user.stdout }} on {{ lookup('env','KUBECONFIG') | default('default kubeconfig') }}"
+
+  tasks:
+    # ── OCP side ──────────────────────────────────────────────────
+    - name: Create OCP namespace
+      command: >
+        oc apply -f - <<'EOF'
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: {{ ocp_namespace }}
+          labels:
+            app.kubernetes.io/part-of: rh-edge-demo
+        EOF
+
+    - name: Install Skupper operator (if not present)
+      command: >
+        oc apply -f https://github.com/skupperproject/skupper/releases/latest/download/install.yaml
+        -n {{ ocp_namespace }}
+      ignore_errors: true
+
+    - name: Apply OCP Skupper site
+      command: >
+        oc apply -f ../rh-edge-demo/ocp/rhsi-site.yaml
+
+    - name: Wait for skupper-router to be ready
+      command: >
+        oc rollout status deployment/skupper-router
+        -n {{ ocp_namespace }} --timeout=120s
+      ignore_errors: true
+
+    - name: Create RHSI AccessGrant for edge VM
+      command: >
+        oc apply -f ../rh-edge-demo/ocp/access-grant.yaml
+
+    - name: Wait for AccessGrant to be ready
+      command: >
+        oc wait accessgrant/edge-node-token
+        -n {{ ocp_namespace }}
+        --for=condition=Ready --timeout=60s
+
+    - name: Fetch AccessGrant token details
+      command: >
+        oc get accessgrant edge-node-token -n {{ ocp_namespace }}
+        -o jsonpath='{.status.url} {.status.code} {.status.ca}'
+      register: grant_details
+
+    - name: Parse grant details
+      set_fact:
+        skupper_grant_url:  "{{ grant_details.stdout.split(' ')[0] }}"
+        skupper_grant_code: "{{ grant_details.stdout.split(' ')[1] }}"
+        skupper_grant_ca:   "{{ grant_details.stdout.split(' ')[2] }}"
+
+    # ── Build bootc image ──────────────────────────────────────────
+    - name: Build identity-service container image
+      command: >
+        podman build
+        --authfile {{ authfile }}
+        -t localhost/identity-service:{{ image_tag }}
+        ../rh-edge-demo/identity-service
+
+    - name: Build dashboard container image
+      command: >
+        podman build
+        --authfile {{ authfile }}
+        -t localhost/dashboard:{{ image_tag }}
+        ../rh-edge-demo/dashboard
+
+    - name: Build bootc edge node image
+      command: >
+        sudo podman build
+        --authfile {{ authfile }}
+        -t localhost/{{ image_name }}:{{ image_tag }}
+        ../rh-edge-demo
+      register: build_out
+
+    - name: Show build output
+      debug:
+        msg: "{{ build_out.stdout_lines[-5:] }}"
+
+    # ── Convert to QCOW2 ──────────────────────────────────────────
+    - name: Convert bootc image to QCOW2
+      command: >
+        sudo podman run --rm --privileged
+        --authfile {{ authfile }}
+        -v /var/lib/containers/storage:/var/lib/containers/storage
+        -v {{ playbook_dir }}/output:/output
+        registry.redhat.io/rhel10/bootc-image-builder:latest
+        --type qcow2
+        --local
+        localhost/{{ image_name }}:{{ image_tag }}
+      args:
+        creates: "{{ playbook_dir }}/output/qcow2/disk.qcow2"
+
+    # ── Write cloud-init user-data with RHSI token ─────────────────
+    - name: Write cloud-init user-data with skupper token
+      template:
+        src: cloud-init/user-data.j2
+        dest: "{{ playbook_dir }}/cloud-init/user-data-rendered"
+      vars:
+        skupper_token_url:  "{{ skupper_grant_url }}"
+        skupper_token_code: "{{ skupper_grant_code }}"
+        skupper_token_ca:   "{{ skupper_grant_ca }}"
+
+    # ── Deploy VM ──────────────────────────────────────────────────
+    - name: Destroy existing VM if present
+      command: "virsh destroy {{ vm_name }}"
+      ignore_errors: true
+
+    - name: Undefine existing VM
+      command: "virsh undefine {{ vm_name }}"
+      ignore_errors: true
+
+    - name: Copy QCOW2 to VM storage
+      command: >
+        cp {{ playbook_dir }}/output/qcow2/disk.qcow2
+           /var/lib/libvirt/images/{{ vm_name }}.qcow2
+      become: true
+
+    - name: Create VM
+      command: >
+        virt-install
+        --name {{ vm_name }}
+        --memory {{ vm_memory_mb }}
+        --vcpus {{ vm_cpus }}
+        --disk path=/var/lib/libvirt/images/{{ vm_name }}.qcow2,format=qcow2
+        --import
+        --os-variant rhel10-unknown
+        --network bridge=virbr0,mac={{ vm_mac }}
+        --cloud-init user-data={{ playbook_dir }}/cloud-init/user-data-rendered
+        --noautoconsole
+
+    - name: Wait for VM to get IP
+      command: >
+        virsh domifaddr {{ vm_name }} --source agent
+      register: vm_ip_raw
+      retries: 30
+      delay: 10
+      until: vm_ip_raw.rc == 0 and '/' in vm_ip_raw.stdout
+      ignore_errors: true
+
+    - name: Show VM IP
+      debug:
+        msg: "VM IP: {{ vm_ip_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)') }}"
+
+    - name: Wait for dashboard to be ready
+      uri:
+        url: "http://{{ vm_ip_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)') }}:{{ dashboard_nodeport }}/health"
+        status_code: 200
+      retries: 30
+      delay: 10
+      ignore_errors: true
+
+    - name: Show dashboard URL
+      debug:
+        msg: >
+          Dashboard: http://{{ vm_ip_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)') }}:{{ dashboard_nodeport }}

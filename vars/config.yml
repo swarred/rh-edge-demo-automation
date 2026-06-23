@@ -1,0 +1,23 @@
+---
+# OCP cluster
+ocp_namespace: jtac-ops
+
+# VM
+vm_name: rh-edge-node
+vm_memory_mb: 8192
+vm_cpus: 4
+vm_disk_gb: 40
+vm_mac: "52:54:00:ae:11:01"
+
+# Image
+image_name: rh-edge-node
+image_tag: latest
+authfile: "{{ lookup('env','HOME') }}/pull-secret.json"
+
+# Demo
+dashboard_nodeport: 30888
+
+# Skupper — set after cluster setup
+skupper_grant_url: ""
+skupper_grant_code: ""
+skupper_grant_ca: ""

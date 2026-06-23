@@ -1,0 +1,25 @@
+---
+- name: Tear down RH Edge Demo
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/config.yml
+
+  tasks:
+    - name: Destroy VM
+      command: "virsh destroy {{ vm_name }}"
+      ignore_errors: true
+
+    - name: Undefine VM
+      command: "virsh undefine {{ vm_name }}"
+      ignore_errors: true
+
+    - name: Remove QCOW2 disk
+      file:
+        path: "/var/lib/libvirt/images/{{ vm_name }}.qcow2"
+        state: absent
+      become: true
+
+    - name: Delete OCP namespace
+      command: "oc delete namespace {{ ocp_namespace }} --ignore-not-found=true"
