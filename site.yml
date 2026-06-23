@@ -21,12 +21,6 @@
     - name: Create OCP namespace
       command: oc apply -f ../rh-edge-demo/ocp/namespace.yaml
 
-    - name: Install Skupper operator (if not present)
-      command: >
-        oc apply -f https://github.com/skupperproject/skupper/releases/latest/download/install.yaml
-        -n {{ ocp_namespace }}
-      ignore_errors: true
-
     - name: Apply OCP Skupper site
       command: >
         oc apply -f ../rh-edge-demo/ocp/rhsi-site.yaml
@@ -60,20 +54,6 @@
         skupper_grant_ca:   "{{ grant_details.stdout.split(' ')[2] }}"
 
     # ── Build bootc image ──────────────────────────────────────────
-    - name: Build identity-service container image
-      command: >
-        podman build
-        --authfile {{ authfile }}
-        -t localhost/identity-service:{{ image_tag }}
-        ../rh-edge-demo/identity-service
-
-    - name: Build dashboard container image
-      command: >
-        podman build
-        --authfile {{ authfile }}
-        -t localhost/dashboard:{{ image_tag }}
-        ../rh-edge-demo/dashboard
-
     - name: Build bootc edge node image
       command: >
         sudo podman build
