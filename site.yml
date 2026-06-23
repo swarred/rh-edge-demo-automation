@@ -133,7 +133,7 @@
 
     - name: Wait for VM to get IP
       command: >
-        virsh domifaddr {{ vm_name }} --source agent
+        virsh --connect qemu:///system domifaddr {{ vm_name }} --source arp
       register: vm_ip_raw
       retries: 30
       delay: 10
