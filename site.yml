@@ -1,5 +1,5 @@
 ---
-- name: Deploy RH Edge Demo — Scenario 1 (JTAC Identity Continuity)
+- name: Deploy RH Edge Demo
   hosts: localhost
   connection: local
   gather_facts: false
