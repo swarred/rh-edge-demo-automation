@@ -161,7 +161,7 @@
 
     - name: Wait for dashboard to be ready
       uri:
-        url: "http://{{ vm_ip_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)') }}:{{ dashboard_nodeport }}/health"
+        url: "http://{{ vm_ip_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)') }}:8888/health"
         status_code: 200
       retries: 30
       delay: 10
@@ -170,4 +170,4 @@
     - name: Show dashboard URL
       debug:
         msg: >
-          Dashboard: http://{{ vm_ip_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)') }}:{{ dashboard_nodeport }}
+          Dashboard: http://{{ vm_ip_raw.stdout | regex_search('(\\d+\\.\\d+\\.\\d+\\.\\d+)') }}:8888
