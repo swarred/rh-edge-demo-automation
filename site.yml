@@ -99,12 +99,16 @@
         skupper_token_ca:   "{{ skupper_grant_ca }}"
 
     # ── Deploy VM ──────────────────────────────────────────────────
+    - name: Ensure libvirt default network is up
+      command: virsh --connect qemu:///system net-start default
+      ignore_errors: true
+
     - name: Destroy existing VM if present
-      command: "virsh destroy {{ vm_name }}"
+      command: "virsh --connect qemu:///system destroy {{ vm_name }}"
       ignore_errors: true
 
     - name: Undefine existing VM
-      command: "virsh undefine {{ vm_name }}"
+      command: "virsh --connect qemu:///system undefine {{ vm_name }}"
       ignore_errors: true
 
     - name: Copy QCOW2 to VM storage
@@ -114,9 +118,9 @@
       become: true
 
     - name: Create VM
-      become: true
       command: >
         virt-install
+        --connect qemu:///system
         --name {{ vm_name }}
         --memory {{ vm_memory_mb }}
         --vcpus {{ vm_cpus }}
