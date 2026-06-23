@@ -114,6 +114,7 @@
       become: true
 
     - name: Create VM
+      become: true
       command: >
         virt-install
         --name {{ vm_name }}
@@ -121,7 +122,7 @@
         --vcpus {{ vm_cpus }}
         --disk path=/var/lib/libvirt/images/{{ vm_name }}.qcow2,format=qcow2
         --import
-        --os-variant rhel10-unknown
+        --os-variant rhel9-unknown
         --network bridge=virbr0,mac={{ vm_mac }}
         --cloud-init user-data={{ playbook_dir }}/cloud-init/user-data-rendered
         --noautoconsole
