@@ -68,6 +68,12 @@
         msg: "{{ build_out.stdout_lines[-5:] }}"
 
     # ── Convert to QCOW2 ──────────────────────────────────────────
+    - name: Create output directory for QCOW2
+      file:
+        path: "{{ playbook_dir }}/output"
+        state: directory
+        mode: '0755'
+
     - name: Convert bootc image to QCOW2
       become: true
       command: >
@@ -75,7 +81,7 @@
         --authfile {{ authfile }}
         -v /var/lib/containers/storage:/var/lib/containers/storage
         -v {{ playbook_dir }}/output:/output
-        registry.redhat.io/rhel10/bootc-image-builder:latest
+        registry.redhat.io/rhel9/bootc-image-builder:9.8-1782204946
         --type qcow2
         --local
         localhost/{{ image_name }}:{{ image_tag }}
