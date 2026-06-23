@@ -13,8 +13,8 @@ vm_mac: "52:54:00:ae:11:01"
 image_name: rh-edge-node
 image_tag: latest
 authfile: "{{ playbook_dir }}/.creds/pull-secret.json"
-rhsm_org_file:  "{{ playbook_dir }}/.creds/rhsm-org.txt"
-rhsm_key_file:  "{{ playbook_dir }}/.creds/rhsm-key.txt"
+rhsm_user_file: "{{ playbook_dir }}/.creds/rhsm-user.txt"
+rhsm_pass_file: "{{ playbook_dir }}/.creds/rhsm-pass.txt"
 
 # Demo
 dashboard_nodeport: 30888
