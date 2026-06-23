@@ -89,6 +89,10 @@
         creates: "{{ playbook_dir }}/output/qcow2/disk.qcow2"
 
     # ── Write cloud-init user-data with RHSI token ─────────────────
+    - name: Read pull secret for MicroShift
+      set_fact:
+        pull_secret_content: "{{ lookup('file', playbook_dir + '/.creds/pull-secret.json') }}"
+
     - name: Write cloud-init user-data with skupper token
       template:
         src: cloud-init/user-data.j2

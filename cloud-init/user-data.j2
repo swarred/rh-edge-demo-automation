@@ -24,9 +24,14 @@ write_files:
         code: {{ skupper_token_code }}
         ca: {{ skupper_token_ca }}
 
+  # MicroShift pull secret — required to pull internal component images (OVN, DNS, etc.)
+  - path: /etc/crio/openshift-pull-secret
+    permissions: '0600'
+    content: '{{ pull_secret_content }}'
+
   - path: /var/lib/rh-edge-demo/.keep
     content: ""
 
 runcmd:
-  - mkdir -p /var/lib/rh-edge-demo
+  - mkdir -p /var/lib/rh-edge-demo /etc/crio
   - systemctl daemon-reload
